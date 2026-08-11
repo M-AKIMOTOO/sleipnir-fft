@@ -35,9 +35,6 @@ simd_rot_inv_bd :: #force_inline proc(bd: simd.f64x4) -> simd.f64x4 {
 	return simd.mul(simd.shuffle(bd, bd, 1, 0, 3, 2), SIMD_INV_T3_SIGN)
 }
 
-prefetch_read_l1_complex128 :: #force_inline proc(ptr: ^complex128) {
-	intrinsics.prefetch_read_data(ptr, 3)
-}
 
 cooley_tukey_dft4_from_bitrev_forward :: #force_inline proc(a0, a1, a2, a3: complex128) -> (y0, y1, y2, y3: complex128) {
 	s0 := a0 + a1
@@ -377,10 +374,6 @@ cooley_tukey_forward_stage_blocks :: proc(
 				iu := base + k
 				iv := iu + half
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[iu+2])
-					prefetch_read_l1_complex128(&data[iv+2])
-				}
 
 				u := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iu]))
 				v := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iv]))
@@ -465,10 +458,6 @@ cooley_tukey_inverse_stage_inv_blocks :: proc(
 				iu := base + k
 				iv := iu + half
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[iu+2])
-					prefetch_read_l1_complex128(&data[iv+2])
-				}
 
 				u := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iu]))
 				v := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iv]))
@@ -553,10 +542,6 @@ cooley_tukey_inverse_stage_conj_blocks :: proc(
 				iu := base + k
 				iv := iu + half
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[iu+2])
-					prefetch_read_l1_complex128(&data[iv+2])
-				}
 
 				u := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iu]))
 				v := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[iv]))
@@ -771,12 +756,6 @@ cooley_tukey_forward_radix4_stage_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -854,12 +833,6 @@ cooley_tukey_forward_radix4_stage_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if k + 3 < quarter {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -968,12 +941,6 @@ cooley_tukey_inverse_radix4_stage_inv_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -1051,12 +1018,6 @@ cooley_tukey_inverse_radix4_stage_inv_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if k + 3 < quarter {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -1165,12 +1126,6 @@ cooley_tukey_inverse_radix4_stage_conj_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if p + 1 < pair_count {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -1248,12 +1203,6 @@ cooley_tukey_inverse_radix4_stage_conj_blocks :: proc(
 				i2 := i1 + quarter
 				i3 := i2 + quarter
 
-				if k + 3 < quarter {
-					prefetch_read_l1_complex128(&data[i0+2])
-					prefetch_read_l1_complex128(&data[i1+2])
-					prefetch_read_l1_complex128(&data[i2+2])
-					prefetch_read_l1_complex128(&data[i3+2])
-				}
 
 				a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 				bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -1352,12 +1301,6 @@ cooley_tukey_inverse_radix4_stage_scaled :: proc(
 			i2 := i1 + quarter
 			i3 := i2 + quarter
 
-			if p + 1 < pair_count {
-				prefetch_read_l1_complex128(&data[i0+2])
-				prefetch_read_l1_complex128(&data[i1+2])
-				prefetch_read_l1_complex128(&data[i2+2])
-				prefetch_read_l1_complex128(&data[i3+2])
-			}
 
 			a := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i0]))
 			bv := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i1]))
@@ -2079,11 +2022,6 @@ cooley_tukey_bit_reverse_permute_in_place :: proc(plan: ^C2C_Plan, data: []compl
 	n := plan.n
 	if plan.bitrev != nil {
 		#no_bounds_check for i in 0..<n {
-			// Prefetch ahead
-			if i + 16 < n {
-				prefetch_j := int(plan.bitrev[i+16])
-				prefetch_read_l1_complex128(&data[prefetch_j])
-			}
 			j := int(plan.bitrev[i])
 			if j > i {
 				data[i], data[j] = data[j], data[i]
@@ -2120,11 +2058,6 @@ cooley_tukey_digit_reverse4_permute_in_place :: proc(plan: ^C2C_Plan, data: []co
 			return
 		}
 		#no_bounds_check for i in 0..<n {
-			// Prefetch ahead
-			if i + 16 < n {
-				prefetch_j := int(plan.digitrev4[i+16])
-				prefetch_read_l1_complex128(&data[prefetch_j])
-			}
 			j := int(plan.digitrev4[i])
 			if j > i {
 				data[i], data[j] = data[j], data[i]

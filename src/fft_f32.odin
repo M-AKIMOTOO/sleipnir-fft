@@ -195,6 +195,7 @@ c2c_plan_init_f32_with_options :: proc(plan: ^C2C_Plan_F32, n: int, options: C2C
 	resolved_backend := resolve_backend_for_size_f32(n, options.backend, allocator)
 	log2_n := log2_exact(n)
 	cooley_radix := resolve_cooley_radix(n, log2_n, options.cooley_radix, 1)
+	if options.cooley_radix == 0 && n < 16384 && (log2_n & 1) == 0 { cooley_radix = 2 }
 
 	twiddles, twiddle_err := make([]complex64, n/2, allocator)
 	if twiddle_err != .None {
@@ -293,7 +294,9 @@ c2c_plan_estimate_bytes_f32 :: proc(n: int, backend: Backend, store_inverse_twid
 	if store_inverse_twiddles {
 		bytes += (n / 2) * size_of(complex64)
 	}
-	cooley_radix := resolve_cooley_radix(n, log2_exact(n), 0, 1)
+	log2_n := log2_exact(n)
+	cooley_radix := resolve_cooley_radix(n, log2_n, 0, 1)
+	if n < 16384 && (log2_n & 1) == 0 { cooley_radix = 2 }
 	if store_bitrev_table && cooley_radix == 2 {
 		bytes += n * size_of(u32)
 	}
