@@ -18,7 +18,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from sleipnir_fft import C2CPlan
+from sleipnirfft import C2CPlan
 
 
 def parse_args() -> argparse.Namespace:

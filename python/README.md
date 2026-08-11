@@ -10,7 +10,7 @@ Then use the zero-copy reusable plan API:
 
 ```python
 import numpy as np
-from sleipnir_fft import C2CPlan
+from sleipnirfft import C2CPlan
 
 x = np.ascontiguousarray(np.random.randn(4096) + 1j * np.random.randn(4096), dtype=np.complex64)
 with C2CPlan(x.size, x.dtype) as plan:

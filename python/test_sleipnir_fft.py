@@ -1,6 +1,6 @@
 import numpy as np
 
-from sleipnir_fft import C2CPlan, fft, ifft
+from sleipnirfft import C2CPlan, fft, ifft
 
 
 def test_one_shot_matches_numpy_for_both_dtypes():
