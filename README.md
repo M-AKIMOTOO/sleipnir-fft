@@ -195,3 +195,30 @@ with C2CPlan(data.size, data.dtype, library=library) as plan:
     plan.forward(data)
 result = fft(data, library=library)
 ```
+
+### Real-to-complex (R2C)
+
+For real-valued signals, use `R2CPlan`. It supports `float32` to `complex64`
+and `float64` to `complex128`. The forward result contains only the
+non-negative frequencies and has `n // 2 + 1` bins:
+
+```python
+import numpy as np
+from sleipnirfft import R2CPlan
+
+n = 4096
+real = np.random.default_rng(7).normal(size=n).astype(np.float32)
+
+with R2CPlan(n, np.float32) as plan:
+    spectrum = np.empty(plan.output_size, dtype=plan.output_dtype)
+    restored = np.empty(n, dtype=np.float32)
+    plan.forward(real, spectrum)
+    plan.inverse(spectrum, restored)
+```
+
+The input is not modified. Supplying `spectrum` and `restored` avoids output
+allocation on repeated calls. If omitted, `forward` and `inverse` allocate the
+corresponding output array. For one-shot use, `rfft(real)` and
+`irfft(spectrum, n=real.size)` are available. Pass `n` to `irfft` for odd
+length signals, because the spectrum alone cannot distinguish even and odd
+original lengths.

@@ -114,3 +114,96 @@ sleipnir_fft_f64_inverse :: proc "c" (handle, data: rawptr, n: i64) -> i32 {
 	plan := cast(^C2C_Plan)handle
 	return i32(c2c_inverse_in_place(plan, c_api_f64_slice(data, n)))
 }
+
+
+c_api_f32_real_slice :: #force_inline proc(data: rawptr, n: i64) -> []f32 {
+	return mem.slice_ptr(cast(^f32)data, int(n))
+}
+
+c_api_f64_real_slice :: #force_inline proc(data: rawptr, n: i64) -> []f64 {
+	return mem.slice_ptr(cast(^f64)data, int(n))
+}
+
+@(export, link_name="sleipnir_fft_f32_r2c_plan_create")
+sleipnir_fft_f32_r2c_plan_create :: proc "c" (n: i64) -> rawptr {
+	context = runtime.default_context()
+	if !c_api_valid_length(n) || n < 2 { return nil }
+	plan := new(R2C_Plan_F32)
+	if plan == nil { return nil }
+	if err := r2c_plan_init_f32(plan, int(n)); err != .None {
+		free(rawptr(plan))
+		return nil
+	}
+	return rawptr(plan)
+}
+
+@(export, link_name="sleipnir_fft_f32_r2c_plan_destroy")
+sleipnir_fft_f32_r2c_plan_destroy :: proc "c" (handle: rawptr) {
+	context = runtime.default_context()
+	if handle == nil { return }
+	plan := cast(^R2C_Plan_F32)handle
+	r2c_plan_destroy_f32(plan)
+	free(rawptr(plan))
+}
+
+@(export, link_name="sleipnir_fft_f32_r2c_forward")
+sleipnir_fft_f32_r2c_forward :: proc "c" (handle, input, output: rawptr, n: i64) -> i32 {
+	context = runtime.default_context()
+	if handle == nil || input == nil || output == nil || !c_api_valid_length(n) || n < 2 {
+		return i32(Error.Invalid_Length)
+	}
+	plan := cast(^R2C_Plan_F32)handle
+	return i32(r2c_forward_f32(plan, c_api_f32_real_slice(input, n), mem.slice_ptr(cast(^complex64)output, int(n/2+1))))
+}
+
+@(export, link_name="sleipnir_fft_f32_c2r_inverse")
+sleipnir_fft_f32_c2r_inverse :: proc "c" (handle, input, output: rawptr, n: i64) -> i32 {
+	context = runtime.default_context()
+	if handle == nil || input == nil || output == nil || !c_api_valid_length(n) || n < 2 {
+		return i32(Error.Invalid_Length)
+	}
+	plan := cast(^R2C_Plan_F32)handle
+	return i32(c2r_inverse_f32(plan, mem.slice_ptr(cast(^complex64)input, int(n/2+1)), c_api_f32_real_slice(output, n)))
+}
+
+@(export, link_name="sleipnir_fft_f64_r2c_plan_create")
+sleipnir_fft_f64_r2c_plan_create :: proc "c" (n: i64) -> rawptr {
+	context = runtime.default_context()
+	if !c_api_valid_length(n) || n < 2 { return nil }
+	plan := new(R2C_Plan)
+	if plan == nil { return nil }
+	if err := r2c_plan_init(plan, int(n)); err != .None {
+		free(rawptr(plan))
+		return nil
+	}
+	return rawptr(plan)
+}
+
+@(export, link_name="sleipnir_fft_f64_r2c_plan_destroy")
+sleipnir_fft_f64_r2c_plan_destroy :: proc "c" (handle: rawptr) {
+	context = runtime.default_context()
+	if handle == nil { return }
+	plan := cast(^R2C_Plan)handle
+	r2c_plan_destroy(plan)
+	free(rawptr(plan))
+}
+
+@(export, link_name="sleipnir_fft_f64_r2c_forward")
+sleipnir_fft_f64_r2c_forward :: proc "c" (handle, input, output: rawptr, n: i64) -> i32 {
+	context = runtime.default_context()
+	if handle == nil || input == nil || output == nil || !c_api_valid_length(n) || n < 2 {
+		return i32(Error.Invalid_Length)
+	}
+	plan := cast(^R2C_Plan)handle
+	return i32(r2c_forward(plan, c_api_f64_real_slice(input, n), mem.slice_ptr(cast(^complex128)output, int(n/2+1))))
+}
+
+@(export, link_name="sleipnir_fft_f64_c2r_inverse")
+sleipnir_fft_f64_c2r_inverse :: proc "c" (handle, input, output: rawptr, n: i64) -> i32 {
+	context = runtime.default_context()
+	if handle == nil || input == nil || output == nil || !c_api_valid_length(n) || n < 2 {
+		return i32(Error.Invalid_Length)
+	}
+	plan := cast(^R2C_Plan)handle
+	return i32(c2r_inverse(plan, mem.slice_ptr(cast(^complex128)input, int(n/2+1)), c_api_f64_real_slice(output, n)))
+}
