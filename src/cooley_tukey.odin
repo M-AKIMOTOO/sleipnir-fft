@@ -18,13 +18,25 @@ COOLEY_W8_INV_2 :: complex(0.0, 1.0)
 COOLEY_W8_INV_3 :: complex(-0.7071067811865475244, 0.7071067811865475244)
 
 simd_cmul2_f64x4 :: #force_inline proc(a, b: simd.f64x4) -> simd.f64x4 {
-	ar := simd.shuffle(a, a, 0, 0, 2, 2)
-	ai := simd.shuffle(a, a, 1, 1, 3, 3)
-	br := simd.shuffle(b, b, 0, 0, 2, 2)
-	bi := simd.shuffle(b, b, 1, 1, 3, 3)
-	re := simd.sub(simd.mul(ar, br), simd.mul(ai, bi))
-	im := simd.add(simd.mul(ar, bi), simd.mul(ai, br))
-	return simd.shuffle(re, im, 0, 4, 2, 6)
+	when intrinsics.has_target_feature("fma") {
+		ar := simd.shuffle(a, a, 0, 0, 2, 2)
+		ai := simd.shuffle(a, a, 1, 1, 3, 3)
+		br := simd.shuffle(b, b, 0, 0, 2, 2)
+		bi := simd.shuffle(b, b, 1, 1, 3, 3)
+		// Keep one product per component as the FMA addend. This reduces the
+		// complex multiply from six vector arithmetic instructions to four.
+		re := simd.fused_mul_add(simd.neg(ai), bi, simd.mul(ar, br))
+		im := simd.fused_mul_add(ai, br, simd.mul(ar, bi))
+		return simd.shuffle(re, im, 0, 4, 2, 6)
+	} else {
+		ar := simd.shuffle(a, a, 0, 0, 2, 2)
+		ai := simd.shuffle(a, a, 1, 1, 3, 3)
+		br := simd.shuffle(b, b, 0, 0, 2, 2)
+		bi := simd.shuffle(b, b, 1, 1, 3, 3)
+		re := simd.sub(simd.mul(ar, br), simd.mul(ai, bi))
+		im := simd.add(simd.mul(ar, bi), simd.mul(ai, br))
+		return simd.shuffle(re, im, 0, 4, 2, 6)
+	}
 }
 
 simd_rot_fwd_bd :: #force_inline proc(bd: simd.f64x4) -> simd.f64x4 {
