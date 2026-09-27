@@ -364,7 +364,7 @@ c2c_forward_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64) -> Erro
     n := plan.n
     bit_reverse_permute_in_place_f32(plan, data)
     i := 0
-    when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+    when FFT_USE_SIMD_KERNELS {
         for ; i+3 < n && n >= 4096; i += 4 {
             v := intrinsics.unaligned_load(cast(^simd.f32x8)(&data[i]))
             u := simd.shuffle(v, v, 0, 1, 0, 1, 4, 5, 4, 5)
@@ -396,7 +396,7 @@ c2c_forward_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64) -> Erro
                 data[base] = u0 + v0; data[base+half] = u0 - v0
             }
             k := 1
-            when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+            when FFT_USE_SIMD_KERNELS {
                 for ; k+3 < half && n >= 4096; k += 4 {
                     iu := base + k; iv := iu + half
                     u := intrinsics.unaligned_load(cast(^simd.f32x8)(&data[iu]))
@@ -450,7 +450,7 @@ c2c_inverse_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64) -> Erro
     n := plan.n
     bit_reverse_permute_in_place_f32(plan, data)
     i := 0
-    when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+    when FFT_USE_SIMD_KERNELS {
         for ; i+3 < n && n >= 4096; i += 4 {
             v := intrinsics.unaligned_load(cast(^simd.f32x8)(&data[i]))
             u := simd.shuffle(v, v, 0, 1, 0, 1, 4, 5, 4, 5)
@@ -482,7 +482,7 @@ c2c_inverse_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64) -> Erro
                     data[base] = u0 + v0; data[base+half] = u0 - v0
                 }
                 k := 1
-                when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+                when FFT_USE_SIMD_KERNELS {
                     for ; k+3 < half && n >= 4096; k += 4 {
                         iu := base + k; iv := iu + half
                         u := intrinsics.unaligned_load(cast(^simd.f32x8)(&data[iu]))
@@ -523,7 +523,7 @@ c2c_inverse_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64) -> Erro
     }
     inv_n := f32(1.0 / f64(n))
     i = 0
-    when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+    when FFT_USE_SIMD_KERNELS {
         for ; i+3 < n; i += 4 {
             v := intrinsics.unaligned_load(cast(^simd.f32x8)(&data[i]))
             intrinsics.unaligned_store(cast(^simd.f32x8)(&data[i]), simd_scale_complex64x4(v, inv_n))
@@ -763,7 +763,7 @@ cooley_tukey_radix4_stage_f32 :: proc(plan: ^C2C_Plan_F32, data: []complex64, st
     }
     for base := 0; base < plan.n; base += stage_len {
         k := 0
-        when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+        when FFT_USE_SIMD_KERNELS {
             if packed_stage != nil {
                 p := 0
                 conj_sign := simd.f32x8{1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0}
@@ -926,7 +926,7 @@ cooley_tukey_inverse_radix4_in_place_f32 :: proc(plan: ^C2C_Plan_F32, data: []co
     }
     inv_n := f32(1.0 / f64(plan.n))
     i := 0
-    when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+    when FFT_USE_SIMD_KERNELS {
         for ; i+1 < plan.n; i += 2 {
             v := intrinsics.unaligned_load(cast(^simd.f32x4)(&data[i]))
             intrinsics.unaligned_store(cast(^simd.f32x4)(&data[i]), simd_scale_complex64x2(v, inv_n))

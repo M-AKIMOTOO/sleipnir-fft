@@ -8,7 +8,7 @@ import "core:thread"
 COOLEY_TUKEY_PARALLEL_MIN_N :: 1 << 16
 COOLEY_TUKEY_PARALLEL_MIN_BLOCKS_PER_WORKER :: 16
 RADIX4_PARALLEL_CHUNK_MIN_LEN :: 1 << 20
-// FFT_USE_AVX2 and SIMD signs moved to fft.odin
+// SIMD feature gates and signs are defined in fft.odin.
 
 COOLEY_W8_FWD_1 :: complex(0.7071067811865475244, -0.7071067811865475244)
 COOLEY_W8_FWD_2 :: complex(0.0, -1.0)
@@ -202,7 +202,7 @@ cooley_tukey_radix2_simd_init :: proc(plan: ^C2C_Plan) -> Error {
 	if plan.radix2_simd_stages != nil {
 		return .None
 	}
-	when !(simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2) {
+	when !FFT_USE_SIMD_KERNELS {
 		return .None
 	}
 
@@ -284,7 +284,7 @@ cooley_tukey_radix4_simd_init :: proc(plan: ^C2C_Plan) -> Error {
 	if plan.radix4_simd_stages != nil {
 		return .None
 	}
-	when !(simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2) {
+	when !FFT_USE_SIMD_KERNELS {
 		return .None
 	}
 
@@ -405,7 +405,7 @@ cooley_tukey_forward_stage_blocks :: proc(
 		data[base+half] = u0 - v0
 		k := 1
 		idx := stride
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < half {
 				iu := base + k
 				iv := iu + half
@@ -489,7 +489,7 @@ cooley_tukey_inverse_stage_inv_blocks :: proc(
 		data[base+half] = u0 - v0
 		k := 1
 		idx := stride
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < half {
 				iu := base + k
 				iv := iu + half
@@ -574,7 +574,7 @@ cooley_tukey_inverse_stage_conj_blocks :: proc(
 		data[base+half] = u0 - v0
 		k := 1
 		idx := stride
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < half {
 				iu := base + k
 				iv := iu + half
@@ -662,7 +662,7 @@ cooley_tukey_inverse_stage_scaled :: proc(
 	data[base+half] = (u0 - v0) * scale_c
 	k := 1
 	idx := stride
-	when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		for k+1 < half {
 			iu := base + k
 			iv := iu + half
@@ -826,7 +826,7 @@ cooley_tukey_forward_radix4_stage_blocks :: proc(
 		idx2 := 0
 		idx3 := 0
 		k := 0
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < quarter {
 				i0 := base + k
 				i1 := i0 + quarter
@@ -1011,7 +1011,7 @@ cooley_tukey_inverse_radix4_stage_inv_blocks :: proc(
 		idx2 := 0
 		idx3 := 0
 		k := 0
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < quarter {
 				i0 := base + k
 				i1 := i0 + quarter
@@ -1196,7 +1196,7 @@ cooley_tukey_inverse_radix4_stage_conj_blocks :: proc(
 		idx2 := 0
 		idx3 := 0
 		k := 0
-		when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			for k+1 < quarter {
 				i0 := base + k
 				i1 := i0 + quarter
@@ -1378,7 +1378,7 @@ cooley_tukey_inverse_radix4_stage_scaled :: proc(
 	idx2 := 0
 	idx3 := 0
 	k := 0
-	when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		for k+1 < quarter {
 			i0 := base + k
 			i1 := i0 + quarter
@@ -2085,7 +2085,7 @@ cooley_tukey_forward_in_place :: proc(plan: ^C2C_Plan, data: []complex128) -> Er
 
 	// len=2 stage (twiddle is 1)
 	i := 0
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		for ; i + 1 < n; i += 2 {
 			v := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i]))
 			u := simd.shuffle(v, v, 0, 1, 0, 1)
@@ -2132,7 +2132,7 @@ cooley_tukey_inverse_in_place :: proc(plan: ^C2C_Plan, data: []complex128) -> Er
 	cooley_tukey_bit_reverse_permute_in_place(plan, data)
 
 	i := 0
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		for ; i + 1 < n; i += 2 {
 			v := intrinsics.unaligned_load(cast(^simd.f64x4)(&data[i]))
 			u := simd.shuffle(v, v, 0, 1, 0, 1)

@@ -286,6 +286,8 @@ C2C_2D_PARALLEL_MIN_POINTS :: 1 << 18
 C2C_2D_PARALLEL_MAX_WORKERS :: 8
 
 FFT_USE_AVX2 :: ODIN_ARCH == .amd64 && intrinsics.has_target_feature("avx2")
+FFT_USE_ARM_SIMD :: ODIN_ARCH == .arm64 && intrinsics.has_target_feature("neon")
+FFT_USE_SIMD_KERNELS :: FFT_USE_AVX2 || FFT_USE_ARM_SIMD
 
 SIMD_FWD_T3_SIGN :: simd.f64x4{1.0, -1.0, 1.0, -1.0}
 SIMD_INV_T3_SIGN :: simd.f64x4{-1.0, 1.0, -1.0, 1.0}
@@ -304,7 +306,7 @@ transpose_4x4_complex_block :: #force_inline proc(
 scale_complex_array_in_place :: #force_inline proc(data: []complex128, scale: f64) {
 	n := len(data)
 	if n == 0 { return }
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		i := 0
 		v_scale := simd.f64x4{scale, scale, scale, scale}
 		for ; i + 1 < n; i += 2 {
@@ -325,7 +327,7 @@ scale_complex_array_in_place :: #force_inline proc(data: []complex128, scale: f6
 scale_copy_complex_array :: #force_inline proc(dst, src: []complex128, scale: f64) {
 	n := len(dst)
 	if n == 0 { return }
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		i := 0
 		v_scale := simd.f64x4{scale, scale, scale, scale}
 		for ; i + 1 < n; i += 2 {
@@ -462,7 +464,7 @@ resolve_cooley_radix :: proc(n, log2_n, requested, num_threads: int) -> int {
 		if n >= 256 && (log2_n & 1) == 0 {
 			return 4
 		}
-	case .SSE_Class, .Scalar:
+	case .SSE_Class, .Scalar, .NEON_Class:
 	}
 	if n >= 1024 && (log2_n & 1) == 0 {
 		return 4
@@ -509,6 +511,7 @@ Auto_R2C_Cache_Entry :: struct {
 CPU_Tier :: enum {
 	Scalar,
 	SSE_Class,
+	NEON_Class,
 	AVX2_Class,
 	AVX2_FMA_Class,
 	AVX512_Class,
@@ -521,6 +524,7 @@ CPU_Profile :: struct {
 	supports_avx2:   bool,
 	supports_fma:    bool,
 	supports_avx512: bool,
+	supports_neon:   bool,
 }
 
 auto_r2c_cache: [AUTO_R2C_CACHE_CAPACITY]Auto_R2C_Cache_Entry
@@ -569,6 +573,17 @@ current_cpu_profile :: proc() -> CPU_Profile {
 			profile.tier = .SSE_Class
 		case:
 			profile.tier = .Scalar
+		}
+	} else when ODIN_ARCH == .arm64 {
+		// Advanced SIMD (NEON) is mandatory for AArch64, including Windows ARM64
+		// where the OS CPU-feature query may not expose an equivalent flag.
+		profile.supports_neon = true
+		profile.tier = .NEON_Class
+	} else when ODIN_ARCH == .arm32 {
+		features := sysinfo.cpu_features()
+		profile.supports_neon = .asimd in features
+		if profile.supports_neon {
+			profile.tier = .NEON_Class
 		}
 	} else {
 		profile.tier = .Scalar
@@ -789,7 +804,7 @@ autotune_fill_real_signal :: proc(data: []f64) {
 }
 
 copy_complex_to_interleaved_real :: proc(dst: []f64, src: []complex128) {
-	when simd.HAS_HARDWARE_SIMD && FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		i := 0
 		for ; i+1 < len(src); i += 2 {
 			v := intrinsics.unaligned_load(cast(^simd.f64x4)(&src[i]))
@@ -1005,7 +1020,7 @@ resolve_auto_plan_options :: proc(n: int, options: C2C_Plan_Options, allocator: 
 			should_autotune = n >= 16384 && n <= AUTO_C2C_TUNE_SINGLE_MAX_N
 		case .AVX2_FMA_Class, .AVX2_Class:
 			should_autotune = n >= 16384 && n <= AUTO_C2C_TUNE_SINGLE_MAX_N
-		case .SSE_Class, .Scalar:
+		case .SSE_Class, .Scalar, .NEON_Class:
 			should_autotune = n >= 2048 && n <= (1 << 18)
 		}
 	} else {
@@ -2515,7 +2530,7 @@ r2c_forward_with_scratch :: proc(plan: ^R2C_Plan, input: []f64, output: []comple
 
 	quarter := plan.half_n / 2
 	k := 1
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		v05 := simd.f64x4{0.5, 0.5, 0.5, 0.5}
 		for ; k + 1 < quarter; k += 2 {
 			mirror := plan.half_n - k
@@ -2634,7 +2649,7 @@ c2r_inverse_with_scratch :: proc(plan: ^R2C_Plan, input: []complex128, output: [
 
 	quarter := plan.half_n / 2
 	k := 1
-	when FFT_USE_AVX2 {
+	when FFT_USE_SIMD_KERNELS {
 		v05 := simd.f64x4{0.5, 0.5, 0.5, 0.5}
 		for ; k + 1 < quarter; k += 2 {
 			mirror := plan.half_n - k
@@ -3361,7 +3376,7 @@ c2c_2d_transform_columns_with_plan :: proc(c2c_plan: ^C2C_Plan, rows, cols: int,
 	for c0 := 0; c0 < cols; c0 += scratch_cols {
 		block_cols := min(scratch_cols, cols-c0)
 		r := 0
-		when FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			if block_cols == 4 {
 				for ; r + 3 < rows; r += 4 {
 					r0 := &data[(r+0)*cols+c0]
@@ -3400,7 +3415,7 @@ c2c_2d_transform_columns_with_plan :: proc(c2c_plan: ^C2C_Plan, rows, cols: int,
 			}
 		}
 		r = 0
-		when FFT_USE_AVX2 {
+		when FFT_USE_SIMD_KERNELS {
 			if block_cols == 4 {
 				for ; r + 3 < rows; r += 4 {
 					c0_ptr := &scratch[0*rows+r]
